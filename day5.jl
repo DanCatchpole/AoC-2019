@@ -1,14 +1,14 @@
+function get_value(state, param_modes, pos, param_num)
+    if param_modes[param_num] == '0'
+        val1 = state[state[pos + param_num + 1] + 1]
+    else
+        val1 = state[pos + param_num + 1]
+    end
+end
+
 function add!(state, param_modes, pos)
-    if param_modes[1] == '0'
-        val1 = state[state[pos + 2] + 1]
-    else
-        val1 = state[pos + 2]
-    end
-    if param_modes[2] == '0'
-        val2 = state[state[pos+3]+1]
-    else
-        val2 = state[pos + 3]
-    end
+    val1 = get_value(state, param_modes, pos, 1)
+    val2 = get_value(state, param_modes, pos, 2)
     store_pos = state[pos + 4]
     state[store_pos + 1] = val1 + val2
 
@@ -16,55 +16,32 @@ function add!(state, param_modes, pos)
 end
 
 function multiply!(state, param_modes, pos)
-    if param_modes[1] == '0'
-        val1 = state[state[pos + 2] + 1]
-    else
-        val1 = state[pos + 2]
-    end
-    if param_modes[2] == '0'
-        val2 = state[state[pos+3]+1]
-    else
-        val2 = state[pos + 3]
-    end
+    val1 = get_value(state, param_modes, pos, 1)
+    val2 = get_value(state, param_modes, pos, 2)
     store_pos = state[pos + 4]
     state[store_pos + 1] = val1 * val2
 
     return pos + 4
 end
 
-function input!(state, pos)
-    store_pos = state[pos + 2]
-
+function input!(state, param_modes, pos)
     print("> ")
     val = parse(Int64, readline())
 
+    store_pos = state[pos + 2]
     state[store_pos + 1] = val
     return pos + 2
 end
 
 function output!(state, param_modes, pos)
-    if param_modes[1] == '0'
-        val1 = state[state[pos + 2] + 1]
-    else
-        # Use actual value
-        val1 = state[pos + 2]
-    end
-
+    val1 = get_value(state, param_modes, pos, 1)
     println(val1)
     return pos + 2
 end
 
 function jump_if_true!(state, param_modes, pos)
-    if param_modes[1] == '0'
-        val1 = state[state[pos + 2] + 1]
-    else
-        val1 = state[pos + 2]
-    end
-    if param_modes[2] == '0'
-        val2 = state[state[pos + 3] + 1]
-    else
-        val2 = state[pos + 3]
-    end
+    val1 = get_value(state, param_modes, pos, 1)
+    val2 = get_value(state, param_modes, pos, 2)
 
     if val1 != 0
         return val2
@@ -74,16 +51,8 @@ function jump_if_true!(state, param_modes, pos)
 end
 
 function jump_if_false!(state, param_modes, pos)
-    if param_modes[1] == '0'
-        val1 = state[state[pos + 2] + 1]
-    else
-        val1 = state[pos + 2]
-    end
-    if param_modes[2] == '0'
-        val2 = state[state[pos + 3] + 1]
-    else
-        val2 = state[pos + 3]
-    end
+    val1 = get_value(state, param_modes, pos, 1)
+    val2 = get_value(state, param_modes, pos, 2)
 
     if val1 == 0
         return val2
@@ -93,79 +62,43 @@ function jump_if_false!(state, param_modes, pos)
 end
 
 function less_than!(state, param_modes, pos)
-    if param_modes[1] == '0'
-        val1 = state[state[pos + 2] + 1]
-    else
-        val1 = state[pos + 2]
-    end
-    if param_modes[2] == '0'
-        val2 = state[state[pos + 3] + 1]
-    else
-        val2 = state[pos + 3]
-    end
+    val1 = get_value(state, param_modes, pos, 1)
+    val2 = get_value(state, param_modes, pos, 2)
     store_pos = state[pos + 4]
 
-    if val1 < val2
-        state[store_pos + 1] = 1
-    else
-        state[store_pos + 1] = 0
-    end
+    state[store_pos + 1] = Int64(val1 < val2)
     return pos + 4
 end
 
 function equals!(state, param_modes, pos)
-    if param_modes[1] == '0'
-        val1 = state[state[pos + 2] + 1]
-    else
-        val1 = state[pos + 2]
-    end
-
-    if param_modes[2] == '0'
-        val2 = state[state[pos + 3] + 1]
-    else
-        val2 = state[pos + 3]
-    end
+    val1 = get_value(state, param_modes, pos, 1)
+    val2 = get_value(state, param_modes, pos, 2)
     store_pos = state[pos + 4]
 
-    if val1 == val2
-        state[store_pos + 1] = 1
-    else
-        state[store_pos + 1] = 0
-    end
-
+    state[store_pos + 1] = Int64(val1 == val2)
     return pos + 4
 end
+
+const OPS = Dict(
+    1 => add!, 2 => multiply!, 3 => input!, 4 => output!,
+    5 => jump_if_true!, 6 => jump_if_false!, 7 => less_than!, 8 => equals!
+)
 
 function execute_intcode(state)
     pos = 0;
     arr = copy(state)
     while pos < length(arr)
-        opcode = arr[pos + 1]
-        
-        str_rep = string("0000", opcode)
-        opcode = parse(Int64, str_rep[(end-1):end])
-        param_modes = [str_rep[end-2], str_rep[end-3], str_rep[end-4]]
+        str_op = string("0000", arr[pos + 1])
+        opcode = parse(Int64, str_op[(end-1):end])
+        param_modes = [str_op[end-2], str_op[end-3], str_op[end-4]]
         
         if opcode == 99
             break
         end
-        if opcode == 1 # Add
-            pos = add!(arr, param_modes, pos)
-        elseif opcode == 2 # Multiply
-            pos = multiply!(arr, param_modes, pos)
-        elseif opcode == 3 # Take an input
-            pos = input!(arr, pos)
-        elseif opcode == 4 # Output
-            pos = output!(arr, param_modes, pos)
-        elseif opcode == 5 # jump-if-true
-            pos = jump_if_true!(arr, param_modes, pos)
-        elseif opcode == 6 # jump-if-false
-            pos = jump_if_false!(arr, param_modes, pos)
-        elseif opcode == 7 # less than
-            pos = less_than!(arr, param_modes, pos)
-        elseif opcode == 8 # equals
-            pos = equals!(arr, param_modes, pos)
-        else # error
+        if haskey(OPS, opcode)
+            func = OPS[opcode]
+            pos = func(arr, param_modes, pos)
+        else
             println("ERR")
             break
         end
